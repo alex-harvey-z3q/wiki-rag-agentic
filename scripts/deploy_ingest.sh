@@ -119,8 +119,6 @@ update_eventbridge_target_task_definition() {
 }
 
 main() {
-  die "INTENTIONAL STOP — test run"
-
   require_cmd aws
   require_cmd docker
   require_cmd jq
