@@ -15,15 +15,6 @@ resource "aws_ecs_cluster" "this" {
 }
 
 ############################################
-# Logging
-############################################
-
-resource "aws_cloudwatch_log_group" "indexer" {
-  name              = "/ecs/${local.project}-indexer"
-  retention_in_days = 14
-}
-
-############################################
 # Task Definitions
 ############################################
 
@@ -215,41 +206,6 @@ resource "aws_ecs_service" "api" {
 ############################################
 # EventBridge Scheduling
 ############################################
-
-resource "aws_iam_role" "events_run_task" {
-  name = "${local.project}-events-run-task"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect    = "Allow",
-      Principal = { Service = "events.amazonaws.com" },
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "events_run_task" {
-  role = aws_iam_role.events_run_task.id
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = ["ecs:RunTask"],
-        Resource = [
-          aws_ecs_task_definition.ingest.arn,
-          aws_ecs_task_definition.indexer.arn
-        ],
-        Condition = { ArnLike = { "ecs:cluster" = aws_ecs_cluster.this.arn } }
-      },
-      {
-        Effect   = "Allow",
-        Action   = ["iam:PassRole"],
-        Resource = [aws_iam_role.task_execution.arn, aws_iam_role.task_role.arn]
-      }
-    ]
-  })
-}
 
 resource "aws_cloudwatch_event_rule" "ingest_schedule" {
   name                = "${local.project}-ingest"

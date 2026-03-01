@@ -63,3 +63,38 @@ resource "aws_iam_role_policy_attachment" "task_policy_attach" {
   role       = aws_iam_role.task_role.name
   policy_arn = aws_iam_policy.task_policy.arn
 }
+
+resource "aws_iam_role" "events_run_task" {
+  name = "${local.project}-events-run-task"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = { Service = "events.amazonaws.com" },
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "events_run_task" {
+  role = aws_iam_role.events_run_task.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = ["ecs:RunTask"],
+        Resource = [
+          aws_ecs_task_definition.ingest.arn,
+          aws_ecs_task_definition.indexer.arn
+        ],
+        Condition = { ArnLike = { "ecs:cluster" = aws_ecs_cluster.this.arn } }
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["iam:PassRole"],
+        Resource = [aws_iam_role.task_execution.arn, aws_iam_role.task_role.arn]
+      }
+    ]
+  })
+}
