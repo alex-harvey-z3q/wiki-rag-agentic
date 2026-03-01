@@ -5,9 +5,9 @@ import logging
 from fastapi import FastAPI, HTTPException
 
 from . import config
-from .db import connect, fetch_evidence
-from .llm import answer_with_evidence, embed_text
+from .llm import answer_with_evidence
 from .models import AskRequest, AskResponse, EvidenceItem
+from .retrieval import retrieve
 
 logger = logging.getLogger("wiki_rag_api")
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +20,17 @@ def health() -> dict:
     return {"ok": True}
 
 
+def _coerce_int(v) -> int | None:
+    if v is None:
+        return None
+    if isinstance(v, int):
+        return v
+    try:
+        return int(v)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 @app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest) -> AskResponse:
     question = req.question.strip()
@@ -27,44 +38,30 @@ def ask(req: AskRequest) -> AskResponse:
         raise HTTPException(status_code=400, detail="question is required")
 
     try:
-        q_emb = embed_text(question)
+        source_nodes = retrieve(question)
     except Exception as e:  # noqa: BLE001
-        logger.exception("Embedding failed")
-        raise HTTPException(status_code=500, detail=f"embedding failed: {e}")
+        logger.exception("Retrieval failed")
+        raise HTTPException(status_code=500, detail=f"retrieval failed: {e}")
 
-    try:
-        conn = connect()
-    except Exception as e:  # noqa: BLE001
-        logger.exception("DB connection failed")
-        raise HTTPException(status_code=500, detail=f"db connect failed: {e}")
-
-    try:
-        rows = fetch_evidence(conn, q_emb, config.TOP_K)
-    except Exception as e:  # noqa: BLE001
-        logger.exception("DB query failed")
-        raise HTTPException(status_code=500, detail=f"db query failed: {e}")
-    finally:
-        try:
-            conn.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-    if not rows:
+    if not source_nodes:
         raise HTTPException(status_code=404, detail="no evidence found")
 
     evidence: list[EvidenceItem] = []
     evidence_payload: list[dict] = []
 
-    for r in rows:
-        excerpt = (r.text or "").strip()
+    for sn in source_nodes:
+        node = sn.node
+        md = node.metadata or {}
+
+        excerpt = (node.get_content() or "").strip()
         if len(excerpt) > config.MAX_EVIDENCE_CHARS:
             excerpt = excerpt[: config.MAX_EVIDENCE_CHARS].rstrip() + "…"
 
         item = EvidenceItem(
-            page=r.page_title,
-            section=r.section_title,
-            url=r.url,
-            revision_id=r.revision_id,
+            page=str(md.get("page_title") or md.get("page") or ""),
+            section=str(md.get("section_title") or md.get("section") or ""),
+            url=str(md.get("url") or ""),
+            revision_id=_coerce_int(md.get("revision_id")),
             excerpt=excerpt,
         )
         evidence.append(item)
