@@ -1,5 +1,10 @@
+############################################
+# Assume-role policy documents
+############################################
+
 data "aws_iam_policy_document" "ecs_task_assume" {
   statement {
+    effect  = "Allow"
     actions = ["sts:AssumeRole"]
 
     principals {
@@ -8,6 +13,22 @@ data "aws_iam_policy_document" "ecs_task_assume" {
     }
   }
 }
+
+data "aws_iam_policy_document" "events_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+  }
+}
+
+############################################
+# ECS task execution role (pull images, write logs, read secrets, etc.)
+############################################
 
 resource "aws_iam_role" "task_execution" {
   name               = "${local.project}-task-exec"
@@ -37,6 +58,10 @@ resource "aws_iam_role_policy" "task_exec_secrets" {
   policy = data.aws_iam_policy_document.task_exec_secrets_doc.json
 }
 
+############################################
+# ECS task role (application permissions)
+############################################
+
 resource "aws_iam_role" "task_role" {
   name               = "${local.project}-task-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
@@ -44,12 +69,14 @@ resource "aws_iam_role" "task_role" {
 
 data "aws_iam_policy_document" "task_policy_doc" {
   statement {
+    effect  = "Allow"
     actions = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"]
+
     resources = [
       aws_s3_bucket.raw.arn,
       "${aws_s3_bucket.raw.arn}/*",
       aws_s3_bucket.parsed.arn,
-      "${aws_s3_bucket.parsed.arn}/*"
+      "${aws_s3_bucket.parsed.arn}/*",
     ]
   }
 }
@@ -64,37 +91,47 @@ resource "aws_iam_role_policy_attachment" "task_policy_attach" {
   policy_arn = aws_iam_policy.task_policy.arn
 }
 
+############################################
+# EventBridge role to run ECS tasks
+############################################
+
 resource "aws_iam_role" "events_run_task" {
-  name = "${local.project}-events-run-task"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect    = "Allow",
-      Principal = { Service = "events.amazonaws.com" },
-      Action    = "sts:AssumeRole"
-    }]
-  })
+  name               = "${local.project}-events-run-task"
+  assume_role_policy = data.aws_iam_policy_document.events_assume.json
+}
+
+data "aws_iam_policy_document" "events_run_task_policy_doc" {
+  statement {
+    sid     = "AllowRunTasks"
+    effect  = "Allow"
+    actions = ["ecs:RunTask"]
+
+    resources = [
+      aws_ecs_task_definition.ingest.arn,
+      aws_ecs_task_definition.indexer.arn,
+    ]
+
+    condition {
+      test     = "ArnLike"
+      variable = "ecs:cluster"
+      values   = [aws_ecs_cluster.this.arn]
+    }
+  }
+
+  statement {
+    sid     = "AllowPassTaskRoles"
+    effect  = "Allow"
+    actions = ["iam:PassRole"]
+
+    resources = [
+      aws_iam_role.task_execution.arn,
+      aws_iam_role.task_role.arn,
+    ]
+  }
 }
 
 resource "aws_iam_role_policy" "events_run_task" {
-  role = aws_iam_role.events_run_task.id
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = ["ecs:RunTask"],
-        Resource = [
-          aws_ecs_task_definition.ingest.arn,
-          aws_ecs_task_definition.indexer.arn
-        ],
-        Condition = { ArnLike = { "ecs:cluster" = aws_ecs_cluster.this.arn } }
-      },
-      {
-        Effect   = "Allow",
-        Action   = ["iam:PassRole"],
-        Resource = [aws_iam_role.task_execution.arn, aws_iam_role.task_role.arn]
-      }
-    ]
-  })
+  name   = "${local.project}-events-run-task"
+  role   = aws_iam_role.events_run_task.id
+  policy = data.aws_iam_policy_document.events_run_task_policy_doc.json
 }
