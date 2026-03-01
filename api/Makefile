@@ -1,5 +1,5 @@
 .PHONY: venv lint clean
-
+ 
 venv:
 	python -m venv .venv
 
