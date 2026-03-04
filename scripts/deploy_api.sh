@@ -50,17 +50,24 @@ get_account_id() {
 build_and_push_image() {
   local tag="$1"
 
-  local account_id registry image_uri
+  local account_id registry image_uri latest_uri
 
   account_id="$(get_account_id)"
   registry="$account_id".dkr.ecr."$AWS_REGION".amazonaws.com
   image_uri="$registry"/"$ECR_REPO_NAME":"$tag"
+  latest_uri="$registry"/"$ECR_REPO_NAME":latest
 
   log "Building image: $image_uri"
   docker build -f "$DOCKERFILE" -t "$image_uri" "$CONTEXT_DIR" >&2 || die "docker build failed"
 
   log "Pushing image: $image_uri"
   docker push "$image_uri" >&2 || die "docker push failed"
+
+  log "Tagging image: $latest_uri"
+  docker tag "$image_uri" "$latest_uri" || die "docker tag failed"
+
+  log "Pushing image: $latest_uri"
+  docker push "$latest_uri" >&2 || die "docker push failed"
 
   echo "$image_uri"
 }
