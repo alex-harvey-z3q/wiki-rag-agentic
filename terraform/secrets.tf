@@ -8,7 +8,7 @@ data "aws_secretsmanager_secret_version" "app_current" {
 
 locals {
   # Expecting the secret string to be JSON like:
-  # {"DB_PASSWORD":"...","OPENAI_API_KEY":"..."}
+  # {"DB_PASSWORD":"..."}
   app_secrets = jsondecode(data.aws_secretsmanager_secret_version.app_current.secret_string)
   db_password = local.app_secrets.DB_PASSWORD
 }

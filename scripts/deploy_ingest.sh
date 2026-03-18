@@ -11,11 +11,11 @@
 set -euo pipefail
 
 readonly AWS_REGION="ap-southeast-2"
-readonly ECR_REPO_NAME="wiki-rag-ingest"
+readonly ECR_REPO_NAME="wiki-rag-bedrock-ingest"
 readonly DOCKERFILE="ingest/Dockerfile"
 readonly CONTEXT_DIR="ingest"
 readonly CONTAINER_NAME="ingest"
-readonly INGEST_RULE_NAME="wiki-rag-ingest"
+readonly INGEST_RULE_NAME="wiki-rag-bedrock-ingest"
 readonly INGEST_TARGET_ID="ecs-ingest"
 
 log() {

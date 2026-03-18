@@ -33,6 +33,9 @@ resource "aws_ecs_task_definition" "api" {
     essential    = true
     portMappings = [{ containerPort = 8000, hostPort = 8000, protocol = "tcp" }]
     environment = [
+      { name = "AWS_REGION", value = local.aws_region },
+      { name = "BEDROCK_CHAT_MODEL_ID", value = local.bedrock_chat_model_id },
+      { name = "BEDROCK_EMBED_MODEL_ID", value = local.bedrock_embed_model_id },
       { name = "RAW_BUCKET", value = aws_s3_bucket.raw.bucket },
       { name = "PARSED_BUCKET", value = aws_s3_bucket.parsed.bucket },
       { name = "DB_HOST", value = aws_db_instance.postgres.address },
@@ -41,11 +44,10 @@ resource "aws_ecs_task_definition" "api" {
       { name = "DB_USER", value = local.db_username },
       { name = "VEC_SCHEMA", value = "public" },
       { name = "VEC_TABLE",  value = "data_wiki_rag_nodes" },
-      { name = "EMBED_DIM",  value = "1536" }
+      { name = "EMBED_DIM",  value = local.embed_dim }
     ]
     secrets = [
-      { name = "DB_PASSWORD", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:DB_PASSWORD::" },
-      { name = "OPENAI_API_KEY", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:OPENAI_API_KEY::" }
+      { name = "DB_PASSWORD", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:DB_PASSWORD::" }
     ]
     logConfiguration = {
       logDriver = "awslogs",
@@ -72,6 +74,7 @@ resource "aws_ecs_task_definition" "ingest" {
     image     = "${aws_ecr_repository.ingest.repository_url}:latest"
     essential = true
     environment = [
+      { name = "AWS_REGION", value = local.aws_region },
       { name = "RAW_BUCKET", value = aws_s3_bucket.raw.bucket },
       { name = "PARSED_BUCKET", value = aws_s3_bucket.parsed.bucket },
       { name = "DB_HOST", value = aws_db_instance.postgres.address },
@@ -80,8 +83,7 @@ resource "aws_ecs_task_definition" "ingest" {
       { name = "DB_USER", value = local.db_username }
     ]
     secrets = [
-      { name = "DB_PASSWORD", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:DB_PASSWORD::" },
-      { name = "OPENAI_API_KEY", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:OPENAI_API_KEY::" }
+      { name = "DB_PASSWORD", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:DB_PASSWORD::" }
     ]
     logConfiguration = {
       logDriver = "awslogs",
@@ -108,13 +110,15 @@ resource "aws_ecs_task_definition" "indexer" {
     image     = "${aws_ecr_repository.indexer.repository_url}:latest"
     essential = true
     environment = [
+      { name = "AWS_REGION", value = local.aws_region },
+      { name = "BEDROCK_EMBED_MODEL_ID", value = local.bedrock_embed_model_id },
+      { name = "EMBED_DIM", value = local.embed_dim },
       { name = "PARSED_BUCKET", value = aws_s3_bucket.parsed.bucket },
       { name = "DB_HOST", value = aws_db_instance.postgres.address },
       { name = "DB_USER", value = local.db_username }
     ]
     secrets = [
-      { name = "DB_PASSWORD", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:DB_PASSWORD::" },
-      { name = "OPENAI_API_KEY", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:OPENAI_API_KEY::" }
+      { name = "DB_PASSWORD", valueFrom = "${data.aws_secretsmanager_secret.app.arn}:DB_PASSWORD::" }
     ]
     logConfiguration = {
       logDriver = "awslogs",

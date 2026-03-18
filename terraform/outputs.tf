@@ -8,6 +8,7 @@ output "db_endpoint" { value = aws_db_instance.postgres.address }
 output "db_username" { value = local.db_username }
 output "ecr_api" { value = aws_ecr_repository.api.repository_url }
 output "ecr_ingest" { value = aws_ecr_repository.ingest.repository_url }
+output "ecr_indexer" { value = aws_ecr_repository.indexer.repository_url }
 
 output "github_actions_role_arn" {
   value       = aws_iam_role.github_actions.arn

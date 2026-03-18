@@ -69,6 +69,7 @@ resource "aws_iam_role" "task_role" {
 
 data "aws_iam_policy_document" "task_policy_doc" {
   statement {
+    sid     = "AllowS3Access"
     effect  = "Allow"
     actions = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"]
 
@@ -78,6 +79,16 @@ data "aws_iam_policy_document" "task_policy_doc" {
       aws_s3_bucket.parsed.arn,
       "${aws_s3_bucket.parsed.arn}/*",
     ]
+  }
+
+  statement {
+    sid     = "AllowBedrockInference"
+    effect  = "Allow"
+    actions = [
+      "bedrock:InvokeModel",
+      "bedrock:InvokeModelWithResponseStream",
+    ]
+    resources = ["*"]
   }
 }
 

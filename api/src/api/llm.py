@@ -1,39 +1,11 @@
-from __future__ import annotations
+import boto3
+from .config import AWS_REGION, BEDROCK_CHAT_MODEL_ID
 
-from openai import OpenAI
+client = boto3.client("bedrock-runtime", region_name=AWS_REGION)
 
-from . import config
-
-
-def embed_text(text: str) -> list[float]:
-    client = OpenAI(api_key=config.OPENAI_API_KEY)
-    resp = client.embeddings.create(model=config.EMBED_MODEL, input=text)
-    return list(resp.data[0].embedding)
-
-
-def answer_with_evidence(question: str, evidence_items: list[dict]) -> str:
-    client = OpenAI(api_key=config.OPENAI_API_KEY)
-
-    system = (
-        "You are a careful assistant answering questions using ONLY the provided evidence excerpts from Wikipedia. "
-        "If the evidence is insufficient, say you don't know and suggest what page/section would be needed. "
-        "Always include citations like [1], [2] corresponding to the evidence list."
+def answer_with_evidence(question, context):
+    response = client.invoke_model(
+        modelId=BEDROCK_CHAT_MODEL_ID,
+        body=str({"input": f"Question: {question}\nContext: {context}"})
     )
-
-    evidence_block = "\n\n".join(
-        f"[{i+1}] {e['page']} — {e['section']}\nURL: {e['url']}\nExcerpt: {e['excerpt']}"
-        for i, e in enumerate(evidence_items)
-    )
-
-    user = f"Question: {question}\n\nEvidence:\n{evidence_block}"
-
-    resp = client.chat.completions.create(
-        model=config.CHAT_MODEL,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=0.2,
-    )
-
-    return resp.choices[0].message.content or ""
+    return response["body"].read().decode()
