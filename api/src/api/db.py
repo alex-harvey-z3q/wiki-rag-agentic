@@ -44,7 +44,7 @@ def fetch_evidence(
         revision_id,
         text,
         (embedding <-> %s) AS distance
-      FROM {config.VEC_TABLE}
+      FROM {config.PGVECTOR_SCHEMA}.{config.PGVECTOR_TABLE}
       ORDER BY embedding <-> %s
       LIMIT %s
     """
