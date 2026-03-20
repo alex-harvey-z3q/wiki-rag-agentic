@@ -5,12 +5,6 @@ Terraform + ECS Fargate pipeline that:
 2) indexes into Postgres (pgvector)
 3) serves a FastAPI RAG API behind an ALB
 
-Supports:
-- Claude (Amazon Bedrock) for generation
-- OpenAI or Bedrock embeddings
-
----
-
 ---
 
 ## 🧱 Architecture
