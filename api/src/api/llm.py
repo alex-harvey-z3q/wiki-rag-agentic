@@ -13,6 +13,31 @@ def get_bedrock_client():
     return boto3.client("bedrock-runtime", region_name=AWS_REGION)
 
 
+def invoke_claude(
+    system_prompt: str,
+    user_prompt: str,
+    *,
+    max_tokens: int = MAX_TOKENS,
+    temperature: float = TEMPERATURE,
+) -> str:
+    response = get_bedrock_client().converse(
+        modelId=BEDROCK_CHAT_MODEL_ID,
+        system=[{"text": system_prompt}],
+        messages=[{
+            "role": "user",
+            "content": [{"text": user_prompt}],
+        }],
+        inferenceConfig={
+            "maxTokens": max_tokens,
+            "temperature": temperature,
+        },
+    )
+
+    content = response["output"]["message"]["content"]
+    text_parts = [part.get("text", "") for part in content if "text" in part]
+    return "\n".join(part for part in text_parts if part).strip()
+
+
 def answer_with_evidence(
     question: str,
     evidence_items: list[Mapping[str, Any]],
@@ -31,20 +56,4 @@ def answer_with_evidence(
     )
 
     user_prompt = f"Question: {question}\n\nEvidence:\n{evidence_block}"
-
-    response = get_bedrock_client().converse(
-        modelId=BEDROCK_CHAT_MODEL_ID,
-        system=[{"text": system_prompt}],
-        messages=[{
-            "role": "user",
-            "content": [{"text": user_prompt}],
-        }],
-        inferenceConfig={
-            "maxTokens": MAX_TOKENS,
-            "temperature": TEMPERATURE,
-        },
-    )
-
-    content = response["output"]["message"]["content"]
-    text_parts = [part.get("text", "") for part in content if "text" in part]
-    return "\n".join(part for part in text_parts if part).strip()
+    return invoke_claude(system_prompt, user_prompt)
