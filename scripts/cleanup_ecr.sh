@@ -3,7 +3,7 @@
 set -euo pipefail
 
 readonly REGION="ap-southeast-2"
-readonly REPOS=("wiki-rag-bedrock-api" "wiki-rag-bedrock-ingest" "wiki-rag-bedrock-indexer")
+readonly REPOS=("wiki-rag-agentic-api" "wiki-rag-agentic-ingest" "wiki-rag-agentic-indexer")
 
 log() {
   echo "[INFO] $*" >&2

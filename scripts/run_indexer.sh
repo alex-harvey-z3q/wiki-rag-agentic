@@ -3,9 +3,9 @@
 set -euo pipefail
 
 readonly REGION="ap-southeast-2"
-readonly CLUSTER="wiki-rag-bedrock"
-readonly TASK_FAMILY="wiki-rag-bedrock-indexer"
-readonly SUBNET_NAME_PREFIX="wiki-rag-bedrock-private-"
+readonly CLUSTER="wiki-rag-agentic"
+readonly TASK_FAMILY="wiki-rag-agentic-indexer"
+readonly SUBNET_NAME_PREFIX="wiki-rag-agentic-private-"
 
 log() {
   echo "[INFO] $*" >&2
