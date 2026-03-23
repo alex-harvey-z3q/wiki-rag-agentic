@@ -12,5 +12,8 @@ def health():
 
 
 @app.get("/query", response_model=WorkflowResponse)
-def query(q: str = Query(..., min_length=1, max_length=2000)):
-    return run_workflow(q)
+def query(
+    q: str = Query(..., min_length=1, max_length=2000),
+    use_retrieval: bool = Query(True),
+):
+    return run_workflow(q, use_retrieval=use_retrieval)

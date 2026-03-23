@@ -21,7 +21,8 @@ def plan_task(question: str, evidence: list[dict]) -> str:
     system_prompt = (
         "You are Planner, a software planning agent. Produce a concise, structured "
         "implementation plan for a small Python application. Use the retrieved "
-        "evidence for domain rules and behaviour. Be deterministic. Do not write code."
+        "evidence for domain rules and behaviour when provided. Be deterministic. "
+        "Do not write code."
     )
     user_prompt = (
         f"Task: {question}\n\n"
@@ -31,7 +32,7 @@ def plan_task(question: str, evidence: list[dict]) -> str:
         "2. Data structures\n"
         "3. Game rules and flow\n"
         "4. Test strategy\n"
-        "Keep it compact and implementation-ready. Prefer evidence-grounded rules."
+        "Keep it compact and implementation-ready."
     )
     return invoke_claude(system_prompt, user_prompt, max_tokens=900, temperature=0.0)
 
@@ -40,9 +41,9 @@ def implement_task(question: str, evidence: list[dict], plan: str) -> str:
     system_prompt = (
         "You are Implementer, a Python coding agent. Generate a complete, runnable, "
         "terminal-based Python application using standard library only unless the "
-        "task explicitly requires otherwise. Use the retrieved evidence only for "
-        "gameplay rules and conventions. Output only code files using the exact "
-        "separator format === filename ===."
+        "task explicitly requires otherwise. Use retrieved evidence only for "
+        "gameplay rules and conventions when provided. Output only code files using "
+        "the exact separator format === filename ===."
     )
     user_prompt = (
         f"Task: {question}\n\n"
@@ -61,8 +62,6 @@ def implement_task(question: str, evidence: list[dict], plan: str) -> str:
         "- restartable game loop\n"
         "- modular, readable, compact\n"
         "- include basic tests for core game logic\n\n"
-        "Use the evidence to keep gameplay behaviour aligned with Minesweeper rules, "
-        "but choose reasonable Python structure yourself.\n\n"
         "Output multiple files in one plain-text response using separators like:\n"
         "=== main.py ===\n"
         "...\n"
@@ -76,8 +75,8 @@ def implement_task(question: str, evidence: list[dict], plan: str) -> str:
 def review_code(question: str, evidence: list[dict], code: str) -> str:
     system_prompt = (
         "You are Reviewer, a software review agent. Review generated Python code for "
-        "correctness and completeness. Check it against the retrieved evidence where "
-        "that evidence describes gameplay rules. Be specific, concise, and deterministic."
+        "correctness and completeness. Check it against retrieved evidence where "
+        "relevant. Be specific, concise, and deterministic."
     )
     user_prompt = (
         f"Task: {question}\n\n"
@@ -85,7 +84,7 @@ def review_code(question: str, evidence: list[dict], code: str) -> str:
         "Review the generated application. Focus on:\n"
         "- correctness\n"
         "- game logic\n"
-        "- mismatches with retrieved gameplay evidence\n"
+        "- mismatches with retrieved gameplay evidence when evidence is provided\n"
         "- edge cases\n"
         "- structure and readability\n"
         "- test coverage\n\n"
@@ -95,8 +94,8 @@ def review_code(question: str, evidence: list[dict], code: str) -> str:
     return invoke_claude(system_prompt, user_prompt, max_tokens=1000, temperature=0.0)
 
 
-def run_workflow(question: str) -> dict[str, object]:
-    evidence = retrieve(question)
+def run_workflow(question: str, use_retrieval: bool = True) -> dict[str, object]:
+    evidence = retrieve(question) if use_retrieval else []
     plan = plan_task(question, evidence)
     code = implement_task(question, evidence, plan)
     review = review_code(question, evidence, code)
