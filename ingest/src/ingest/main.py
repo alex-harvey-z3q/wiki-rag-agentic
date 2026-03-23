@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 from ingest.wikipedia import fetch_page
 from ingest.parser import split_sections
@@ -8,6 +9,8 @@ from ingest.s3 import put_json
 
 RAW_BUCKET = os.environ["RAW_BUCKET"]
 PARSED_BUCKET = os.environ["PARSED_BUCKET"]
+
+CONVENTIONS_DIR = Path(os.environ.get("CONVENTIONS_DIR", "/app/conventions_wiki"))
 
 
 PAGES = [
@@ -62,9 +65,63 @@ def process_section(
     )
 
 
+def process_conventions_page(path: Path) -> None:
+    """Normalise a single local conventions page and persist it to S3."""
+
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        return
+
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    title = path.stem.replace("_", " ")
+    page_id = f"conventions-{path.stem}"
+
+    put_json(
+        RAW_BUCKET,
+        f"conventions/{path.name}",
+        {
+            "title": title,
+            "content": text,
+            "source": "conventions",
+        },
+    )
+
+    # Store parsed conventions doc
+    doc = NormalizedDocument(
+        doc_id=f"conventions:{path.stem}",
+        source="conventions",
+        page_id=page_id,
+        title=title,
+        section="Conventions",
+        text=text,
+        metadata={
+            "url": "",
+            "fetched_at": fetched_at,
+        },
+    )
+
+    put_json(
+        PARSED_BUCKET,
+        f"docs/conventions/{path.stem}.json",
+        doc.to_dict(),
+    )
+
+
+def process_conventions() -> None:
+    """Process all local conventions files."""
+
+    if not CONVENTIONS_DIR.exists():
+        return
+
+    for path in sorted(CONVENTIONS_DIR.glob("*.md")):
+        process_conventions_page(path)
+
+
 def main() -> None:
     for title in PAGES:
         process_page(title)
+
+    process_conventions()
 
 
 if __name__ == "__main__":
