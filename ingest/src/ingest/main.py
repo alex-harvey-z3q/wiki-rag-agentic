@@ -11,9 +11,8 @@ PARSED_BUCKET = os.environ["PARSED_BUCKET"]
 
 
 PAGES = [
-    "Artificial intelligence",
-    "Machine learning",
-    "Large language model",
+    "Minesweeper (video game)",
+    "Microsoft Minesweeper",
 ]
 
 

@@ -21,6 +21,7 @@ class AskResponse(BaseModel):
 
 
 class WorkflowResponse(BaseModel):
+    evidence: list[EvidenceItem]
     plan: str
     code: str
     review: str

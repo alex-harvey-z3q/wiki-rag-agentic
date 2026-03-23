@@ -54,9 +54,20 @@ def _metadata_value(metadata: Mapping[str, Any], *keys: str, default: str = "") 
     return default
 
 
+def _build_retrieval_query(question: str) -> str:
+    lower = question.lower()
+    if "minesweeper" in lower:
+        return (
+            f"{question}\n\n"
+            "Focus on Minesweeper gameplay rules, adjacent mine counts, revealing cells, "
+            "flagging cells, empty-area recursive reveal, and win/loss conditions."
+        )
+    return question
+
+
 def retrieve(question: str) -> list[dict]:
     retriever = get_retriever()
-    nodes = retriever.retrieve(question)
+    nodes = retriever.retrieve(_build_retrieval_query(question))
 
     evidence: list[dict] = []
     for node_with_score in nodes:
